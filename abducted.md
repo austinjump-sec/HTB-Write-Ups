@@ -2,7 +2,7 @@
 
 **By:** austinjump-sec
 
-> *Note: Screenshots and real IP is unavailable due to Ventoy USB storage constraints. Full command output and methodology documented below. I had to use memory and notes I wrote to write this, I apologize*
+> *Note: Screenshots and real IP is unavailable due to volatile Ventoy USB storage constraints with my Kali .iso. Full command output and methodology documented below. I had to use memory and notes I wrote to write this, I apologize*
 
 ---
 
