@@ -30,9 +30,9 @@ smbclient -L //<target-ip>/ -N
 I identified the `HB-Reception` share and successfully connected with null credentials. Upon exploring the share, I discovered **write permissions**, which immediately suggested a remote code execution vulnerability.
 
 ### Vulnerability Analysis
-Write access to SMB shares with execution privileges aligns with **CVE-2017-7494** (Samba RCE via shared library injection). This vulnerability allows an attacker to upload a malicious `.so` file that gets executed by the SMB daemon.
+Write access to SMB shares with execution privileges aligns with **CVE-2017-7494** (Samba RCE via shared library injection). This vulnerability allows an attacker to upload a malicious `.so` file that gets executed by the SMB daemon. However after a few failed payloads I quickly pivoted to **CVE-2026-4480** a more modern vulnerability that leads to RCE through escaping shell characters
 
-I leveraged this vulnerability to upload and execute a reverse shell payload, resulting in initial access as the `nobody` user.
+I leveraged this vulnerability to run a python PoC script by TheCyberGeek, resulting in initial access as the `nobody` user.
 
 ---
 
