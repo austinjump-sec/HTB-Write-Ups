@@ -180,13 +180,13 @@ cat /root/root.txt
 
 | Stage | User | Method |
 |-------|------|--------|
-| Initial Access | nobody | CVE-2017-7494 (Samba RCE) |
+| Initial Access | nobody | CVE-2026-4480 (Samba RCE) |
 | Lateral Move #1 | scott | Credential extraction from rclone.conf |
 | Lateral Move #2 | marcus | SMB symlink + SSH key injection |
 | Privilege Escalation | root | systemd service override + SUID bash |
 
 **Key Vulnerabilities Exploited:**
-- Samba library injection (CVE-2017-7494)
+- Samba print-command injection (CVE-2026-4480)
 - Weak credential storage (rclone obfuscation)
 - Overpermissive SMB share configuration
 - Writable systemd service override directory
