@@ -152,3 +152,18 @@ curl -s -X POST http://10.129.154.131:30080/mcp \
 We now have a shell as user mcp.
 
 ## Privilege Escalation 
+After doing some basic reconnassaince, we can see we are in a kubernetes cluster with heavily restricted internet and executable access
+
+We can enumerate our environment variables, so that we may set our kubernetes token for authorization
+<img width="762" height="568" alt="Screenshot From 2026-10-04 16-07-16" src="https://github.com/user-attachments/assets/89bdce47-895d-4487-bba8-c03727d18f85" />
+<img width="1270" height="292" alt="Screenshot From 2026-10-04 16-05-36" src="https://github.com/user-attachments/assets/fe74a12b-686f-4289-b2b8-1ce7ab467f63" />
+
+Through enumerating kubernetes rules and services, we can see that we have the dangerously privileged nodes/proxy permission. This hints that hosts root filesystem is likely under /hosts/root, by following the steps in [this](https://grahamhelton.com/blog/nodes-proxy-rce) article we must find the IP and create an exploit script 
+After doing some enumeration on the API; we find our target IP for the exploit script
+<img width="1270" height="108" alt="Screenshot From 2026-10-04 16-04-32" src="https://github.com/user-attachments/assets/6af4f86d-31ec-4fc6-9192-284a3607f021" />
+
+Now that we have our script, we may create our RCE script
+<img width="991" height="806" alt="Screenshot From 2026-10-04 16-03-44" src="https://github.com/user-attachments/assets/eaf98bdf-6047-4747-839b-2db3dae39e1f" />
+
+I now read root flag by calling the script with parameters ```('cat hosts/root/root/root.txt')```
+<img width="991" height="101" alt="Screenshot From 2026-10-04 16-03-16" src="https://github.com/user-attachments/assets/7916bfd9-f480-4012-9b47-7461e7360d22" />
