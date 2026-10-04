@@ -4,14 +4,11 @@
 
 I begin by opening the browser developer tools and immediately checking the Network tab for leaked API paths.
 
-![1](/home/laz/Pictures/Screenshots/Screenshot%20From%202026-10-04%2012-36-21.png)
-![2](/home/laz/Pictures/Screenshots/Screenshot%20From%202026-10-04%2012-36-54.png)
-
-A quick inspection reveals an exposed `/version` endpoint. Curling it shows a vulnerability in the Langflow version, and once again the browser network tab leaks this information.
+A quick inspection reveals an exposed `/version` endpoint. Curling it shows Langflow is outdated and susceptible to  [CVE-2026-33017](https://github.com/advisories/GHSA-vwmf-pq79-vjvx), and once again the browser network tab leaks information needed for [CVE-2026-33017](https://github.com/advisories/GHSA-vwmf-pq79-vjvx), the flows identifier.
 
 <img width="1920" height="923" alt="Screenshot From 2026-10-04 12-46-39" src="https://github.com/user-attachments/assets/857efabe-7aca-41df-9584-7cbf578f8c2a" />
 
-The vulnerable payload structure is as follows:
+The vulnerable payload structure for CVE-2026-33017 is as follows:
 
 ```json
 {
