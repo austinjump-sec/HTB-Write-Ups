@@ -191,9 +191,7 @@ After some API enumeration, we find our target IP for the exploit script.
 
 <img width="1270" height="108" alt="Screenshot From 2026-10-04 16-04-32" src="https://github.com/user-attachments/assets/6af4f86d-31ec-4fc6-9192-284a3607f021" />
 
-Now that we have the script, we can create the RCE exploit script.
-
-<img width="991" height="806" alt="Screenshot From 2026-10-04 16-03-44" src="https://github.com/user-attachments/assets/eaf98bdf-6047-4747-839b-2db3dae39e1f" />
+Now that we have the IP, we can create the RCE exploit script.
 
 ```python
 #!/usr/bin/env python3
