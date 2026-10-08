@@ -58,14 +58,15 @@ Creating and running the script gave me the ability to unzip the encrypted folde
 <img width="1022" height="370" alt="Screenshot From 2026-10-08 17-08-04" src="https://github.com/user-attachments/assets/77a2dff0-8260-435b-9add-9c9104b39f27" />
 We simply log in using sqllite3 and select all entries from users
 <img width="960" height="283" alt="Screenshot From 2026-10-08 17-26-26" src="https://github.com/user-attachments/assets/4edd7a31-e467-4234-9a83-7a28daff042e" />
+<br>
+
 Which gives us the admin hash;
 <img width="1920" height="125" alt="Screenshot From 2026-10-08 17-26-53" src="https://github.com/user-attachments/assets/e481811b-aae2-45ff-838c-578ec325e2ae" />
 
 Comparing this against rockyou.txt gives us a respectable password; ``linkinpark``
 
-Signing in to SSH as johnathan, we test the newly found password,
+Signing in to SSH as johnathan, we test the newly found password and obtain the user flag,
 <img width="955" height="43" alt="image" src="https://github.com/user-attachments/assets/83f67e6e-4b38-4653-ad57-4dec11560d84" />
-and obtain the user flag,
 <img width="378" height="61" alt="image" src="https://github.com/user-attachments/assets/4de4508a-f8a8-4ede-a1cc-2d1da1e5a643" />
 
 ## Privilege Escalation
