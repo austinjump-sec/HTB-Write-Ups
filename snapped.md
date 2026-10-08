@@ -70,3 +70,17 @@ Signing in to SSH as johnathan, we test the newly found password and obtain the 
 <img width="378" height="61" alt="image" src="https://github.com/user-attachments/assets/4de4508a-f8a8-4ede-a1cc-2d1da1e5a643" />
 
 ## Privilege Escalation
+After obtaining the user flag, I noticed that this box uses snap and run command ``snap --version`` 
+<img width="741" height="188" alt="image" src="https://github.com/user-attachments/assets/82e302da-a0cf-4964-b4ef-b1ed35bba687" />
+This version of snap is susceptible to CVE-2026-3888
+Using the C exploit scripts provided by [TheCyberGeek](https://github.com/TheCyberGeek/CVE-2026-3888-snap-confine-systemd-tmpfiles-LPE/tree/main) we can root the box and obtain root flag. 
+
+We start by taking the C scripts from [the provided GitHub repository](https://github.com/TheCyberGeek/CVE-2026-3888-snap-confine-systemd-tmpfiles-LPE/tree/main) and compiling on our local machine as gcc is restricted
+<img width="1120" height="56" alt="image" src="https://github.com/user-attachments/assets/5b92cfb3-bd9b-42b9-98a1-a63ac301e5b9" />
+
+We then create a python server to fetch it with wget on target pc, run the scripts, and obtain root flag.
+<img width="480" height="35" alt="image" src="https://github.com/user-attachments/assets/53b69f65-a7d4-47a6-8297-aacc11e54ffa" />
+<img width="1493" height="612" alt="image" src="https://github.com/user-attachments/assets/7fb9b714-b446-44cd-ba64-d0c49685fefb" />
+<img width="787" height="492" alt="image" src="https://github.com/user-attachments/assets/3f97a7af-bde1-4013-8974-3b23e70b38bb" />
+<img width="1112" height="832" alt="image" src="https://github.com/user-attachments/assets/0e7f374e-3d70-436f-a078-62bd58ad0112" />
+
