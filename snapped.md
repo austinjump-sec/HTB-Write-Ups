@@ -3,7 +3,7 @@
 ## Recon 
 I begin by enumerating with FFUF and finding the ``admin.snapped.com`` domain, I go to it and look through the network tab to find possible API endpoints 
 <img width="1855" height="937" alt="Screenshot From 2026-10-08 16-31-51" src="https://github.com/user-attachments/assets/0354ac1f-de1a-413a-ba98-002cdc73006f" />
-Based on known vulnerable NGINX architecture I test for ``api/backup`` and get a hit. 
+After curling with api endpoint ``install`` for a bit I get curious based on known vulnerable NGINX architecture I test for ``api/backup`` and get a hit. 
 <img width="1056" height="448" alt="Screenshot From 2026-10-08 16-43-58" src="https://github.com/user-attachments/assets/be94c7ea-95ee-46e0-bebf-41cafc0f092c" />
 
 ## Initial Access 
