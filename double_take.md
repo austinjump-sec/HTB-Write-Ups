@@ -5,6 +5,7 @@
 I start with a simple nmap scan and instantly associate the SSH vulnerability with the *SSHole CVE (CVE-2026-123158). 
 
 <img width="923" height="245" alt="Screenshot From 2026-11-20 11-05-28" src="https://github.com/user-attachments/assets/16dfab5c-50ed-48b4-91d2-88e05bb58119" />
+
 ### Foothold
 
 Because of this, I scope out which users I can log in  by spamming 'A', I eventually conclude alpine is the foothold for this machine.
