@@ -8,14 +8,14 @@ I start with a simple nmap scan and instantly associate the SSH vulnerability wi
 
 ### Foothold
 
-Because of this, I scope out which users I can log in  by spamming 'A', I eventually conclude alpine is the foothold for this machine.
+Because of this, I scope out which users I can log in  by submitting oversized passphrases, I eventually conclude alpine is the foothold for this machine.
 
 <img width="1336" height="526" alt="Screenshot From 2026-11-20 11-26-46" src="https://github.com/user-attachments/assets/c7388c53-1447-4cef-9dc5-9950d2f67e59" />
 
 This works by exploiting BSD conventions. A * means a user who should not be authenticated without a password. However, crypt() returns the string * on failure, meaning with enough bytes being sent over, crypt will return *, which is exactly what we need to login.
 
 ### Lateral Movement
-Running ls -la on the home directory reveals saved Firefox credentials, which can quickly be decoded as they are encoded with base64. 
+Running ls -la on the home directory reveals Firefox cache, revealing Firefox credentials, which can quickly be decoded as they are encoded with base64. 
 
 <img width="1920" height="166" alt="Screenshot From 2026-11-20 09-54-24" src="https://github.com/user-attachments/assets/5609b2c3-5169-4f42-9620-76a4558825c7" />
 
@@ -27,7 +27,7 @@ Password found: CorrectHorseBatteryStaple
 
 I use these credentials to sign in with SSH and on the web portals login screen. 
 
-After enough enumeration of the web page I find a file upload, and a docker version hinting towards a Trojan upload, it is susceptible to CVE-2026-41567.
+After enough enumeration of the web page I find a file upload, and a docker version hinting me towards a Trojan upload, it is susceptible to CVE-2026-41567.
 
 ### Privilege Escalation
 Notice Docker 29.5.0,
